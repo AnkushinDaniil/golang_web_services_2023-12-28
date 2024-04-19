@@ -23,49 +23,47 @@ allow to work with tasks that requires input of undefined length. You need to pa
 the function to the next function in pipeline as soon as it is ready.
 */
 func TestPipeline(t *testing.T) {
-
-	var ok = true
-	var recieved uint32
+	ok := true
+	var received uint32
 	freeFlowJobs := []job{
 		job(func(in, out chan interface{}) {
 			out <- 1
 			time.Sleep(10 * time.Millisecond)
-			currRecieved := atomic.LoadUint32(&recieved)
+			currReceived := atomic.LoadUint32(&received)
 			// в чем тут суть
-			// если вы накапливаете значения, то пока вся функция не отрабоатет - дальше они не пойдут
+			// если вы накапливаете значения, то пока вся функция не отработает - дальше они не пойдут
 			// тут я проверяю, что счетчик увеличился в следующей функции
 			// это значит что туда дошло значение прежде чем текущая функция отработала
 
 			// Here is a gist of this test:
 			// If you are accumulating values instead of implementing a pipeline, you are not passing values to the
-			// next funcion before your current function is finished. That is what I am checking: counter
+			// next function before your current function is finished. That is what I am checking: counter
 			// should increase in next function (meaning that values are going there) before current function
 			// finished its execution.
 
-			if currRecieved == 0 {
+			if currReceived == 0 {
 				ok = false
 			}
 		}),
 		job(func(in, out chan interface{}) {
-			for _ = range in {
-				atomic.AddUint32(&recieved, 1)
+			for range in {
+				atomic.AddUint32(&received, 1)
 			}
 		}),
 	}
 	ExecutePipeline(freeFlowJobs...)
-	if !ok || recieved == 0 {
-		t.Errorf("no value free flow - dont collect them")
+	if !ok || received == 0 {
+		t.Errorf("no value free flow - don't collect them")
 	}
 }
 
 func TestSigner(t *testing.T) {
-
 	testExpected := "1173136728138862632818075107442090076184424490584241521304_1696913515191343735512658979631549563179965036907783101867_27225454331033649287118297354036464389062965355426795162684_29568666068035183841425683795340791879727309630931025356555_3994492081516972096677631278379039212655368881548151736_4958044192186797981418233587017209679042592862002427381542_4958044192186797981418233587017209679042592862002427381542"
 	testResult := "NOT_SET"
 
 	// это небольшая защита от попыток не вызывать мои функции расчета
-	// я преопределяю фукции на свои которые инкрементят локальный счетчик
-	// переопределение возможо потому что я объявил функцию как переменную, в которой лежит функция
+	// я преопределяю функции на свои которые инкрементят локальный счетчик
+	// переопределение возможно потому что я объявил функцию как переменную, в которой лежит функция
 
 	// This is a small check to verify that you are actually using supplied `DataSignerMd5` and
 	// `DataSignerCrc32` functions. These function are substituted by the ones that are incrementing
@@ -83,7 +81,8 @@ func TestSigner(t *testing.T) {
 		atomic.AddUint32(&OverheatLockCounter, 1)
 		for {
 			if swapped := atomic.CompareAndSwapUint32(&dataSignerOverheat, 0, 1); !swapped {
-				fmt.Println("OverheatLock happend")
+				fmt.Println("OverheatLock happened")
+				t.Log("OverheatLock happened")
 				time.Sleep(time.Second)
 			} else {
 				break
@@ -94,7 +93,8 @@ func TestSigner(t *testing.T) {
 		atomic.AddUint32(&OverheatUnlockCounter, 1)
 		for {
 			if swapped := atomic.CompareAndSwapUint32(&dataSignerOverheat, 1, 0); !swapped {
-				fmt.Println("OverheatUnlock happend")
+				fmt.Println("OverheatUnlock happened")
+				t.Log("OverheatUnlock happened")
 				time.Sleep(time.Second)
 			} else {
 				break
@@ -120,7 +120,7 @@ func TestSigner(t *testing.T) {
 	}
 
 	inputData := []int{0, 1, 1, 2, 3, 5, 8}
-	// inputData := []int{0,1}
+	// inputData := []int{0, 1}
 
 	hashSignJobs := []job{
 		job(func(in, out chan interface{}) {
@@ -154,7 +154,7 @@ func TestSigner(t *testing.T) {
 	}
 
 	if end > expectedTime {
-		t.Errorf("execition too long\nGot: %s\nExpected: <%s", end, time.Second*3)
+		t.Errorf("execution too long\nGot: %s\nExpected: <%s", end, time.Second*3)
 	}
 
 	// 8 потому что 2 в SingleHash и 6 в MultiHash
@@ -164,5 +164,4 @@ func TestSigner(t *testing.T) {
 		int(DataSignerCrc32Counter) != len(inputData)*8 {
 		t.Errorf("not enough hash-func calls")
 	}
-
 }
