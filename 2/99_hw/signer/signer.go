@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 )
 
 const quotaLimit = 1
@@ -38,39 +38,51 @@ SingleHash считает значение DataSignerCrc32(data)+"~"
 func SingleHash(in, out chan interface{}) {
 	wg := &sync.WaitGroup{}
 	defer wg.Wait()
-	var md5Counter uint32
+	quotaChannel := make(chan struct{}, quotaLimit)
 
-	for val := range in {
-		data := fmt.Sprintf("%v", val)
-		md5 := make(chan string)
-
+	for value := range in {
 		wg.Add(1)
-		go func(m chan<- string) {
+		go func(val interface{}, quotaCh chan struct{}) {
 			defer wg.Done()
-			for curCounter := atomic.LoadUint32(&md5Counter); curCounter >= quotaLimit; {
-			}
-			atomic.AddUint32(&md5Counter, 1)
-			defer atomic.SwapUint32(&md5Counter, 0)
-			md5 <- DataSignerMd5(data)
-		}(md5)
+			data := fmt.Sprintf("%v", val)
+			md5 := make(chan string)
 
-		wg.Add(1)
-		go func(d string, m <-chan string) {
-			md5String := <-m
-			crc32_md5 := DataSignerCrc32(md5String)
-			crc32 := DataSignerCrc32(d)
-			res := fmt.Sprintf("%v~%v", crc32, crc32_md5)
+			wg.Add(1)
+			go func(m chan<- string, qCh chan struct{}, d string) {
+				qCh <- struct{}{}
+				defer wg.Done()
+				m <- DataSignerMd5(d)
+				<-qCh
+			}(md5, quotaCh, data)
 
-			// fmt.Println("SingleHash", d)
-			// fmt.Println("SingleHash md5(data)", m)
-			// fmt.Println("SingleHash crc32(md5(data))", crc32_md5)
-			// fmt.Println("SingleHash crc32(data)", crc32)
-			// fmt.Println("SingleHash result", res)
+			wg.Add(1)
+			go func(d string, m <-chan string) {
+				crc32 := make(chan string)
+				wg.Add(1)
+				go func(c chan<- string, s string) {
+					defer wg.Done()
+					c <- DataSignerCrc32(d)
+				}(crc32, d)
 
-			out <- res
-			wg.Done()
-		}(data, md5)
+				crc32_md5 := make(chan string)
+				wg.Add(1)
+				go func(c chan<- string, mCh <-chan string) {
+					defer wg.Done()
+					c <- DataSignerCrc32(<-mCh)
+				}(crc32_md5, m)
 
+				res := fmt.Sprintf("%v~%v", <-crc32, <-crc32_md5)
+
+				// fmt.Println("SingleHash", d)
+				// fmt.Println("SingleHash md5(data)", m)
+				// fmt.Println("SingleHash crc32(md5(data))", crc32_md5)
+				// fmt.Println("SingleHash crc32(data)", crc32)
+				// fmt.Println("SingleHash result", res)
+
+				out <- res
+				wg.Done()
+			}(data, md5)
+		}(value, quotaChannel)
 	}
 }
 
@@ -83,20 +95,38 @@ MultiHash считает значение crc32(th+data))
 (и ушло на выход из SingleHash)
 */
 func MultiHash(in, out chan interface{}) {
-	for val := range in {
-		data, ok := (val).(string)
-		if !ok {
-			fmt.Println("cant convert data to string")
-		}
-		res := ""
-		var i byte = '0'
-		for ; i < '6'; i++ {
-			t := DataSignerCrc32(string(i) + data)
-			// fmt.Println(data, "MultiHash: crc32(th+step1)", string(i), t)
-			res += t
-		}
-		// fmt.Println(data, "MultiHash result:", string(i), res)
-		out <- res
+	wgMain := &sync.WaitGroup{}
+	defer wgMain.Wait()
+	for value := range in {
+		wgMain.Add(1)
+		go func(val interface{}) {
+			defer wgMain.Done()
+			data, ok := (val).(string)
+			if !ok {
+				fmt.Println("cant convert data to string")
+			}
+
+			arr := make([]string, 6)
+			wg := &sync.WaitGroup{}
+			mu := &sync.Mutex{}
+			// defer wg.Wait()
+
+			for i := 0; i < 6; i++ {
+				wg.Add(1)
+				go func(j int, d string) {
+					defer wg.Done()
+					t := DataSignerCrc32(strconv.Itoa(j) + d)
+					mu.Lock()
+					arr[j] = t
+					mu.Unlock()
+					// fmt.Println(data, "MultiHash: crc32(th+step1)", j, t)
+				}(i, data)
+			}
+			wg.Wait()
+			res := strings.Join(arr, "")
+			// fmt.Println(data, "MultiHash result:", res)
+			out <- res
+		}(value)
 	}
 }
 
