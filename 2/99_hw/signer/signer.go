@@ -22,9 +22,9 @@ func ExecutePipeline(hashSignJobs ...job) {
 
 		wg.Add(1)
 		go func(j job, in, out chan interface{}) {
+			defer wg.Done()
+			defer close(out)
 			j(in, out)
-			wg.Done()
-			close(out)
 		}(hashSignJob, input, output)
 	}
 }
@@ -43,31 +43,23 @@ func SingleHash(in, out chan interface{}) {
 	for value := range in {
 		wg.Add(1)
 		go func(val interface{}, quotaCh chan struct{}) {
-			defer wg.Done()
 			data := fmt.Sprintf("%v", val)
 			md5 := make(chan string)
 
-			wg.Add(1)
 			go func(m chan<- string, qCh chan struct{}, d string) {
 				qCh <- struct{}{}
-				defer wg.Done()
 				m <- DataSignerMd5(d)
 				<-qCh
 			}(md5, quotaCh, data)
 
-			wg.Add(1)
 			go func(d string, m <-chan string) {
 				crc32 := make(chan string)
-				wg.Add(1)
 				go func(c chan<- string, s string) {
-					defer wg.Done()
 					c <- DataSignerCrc32(d)
 				}(crc32, d)
 
 				crc32_md5 := make(chan string)
-				wg.Add(1)
 				go func(c chan<- string, mCh <-chan string) {
-					defer wg.Done()
 					c <- DataSignerCrc32(<-mCh)
 				}(crc32_md5, m)
 
@@ -109,7 +101,6 @@ func MultiHash(in, out chan interface{}) {
 			arr := make([]string, 6)
 			wg := &sync.WaitGroup{}
 			mu := &sync.Mutex{}
-			// defer wg.Wait()
 
 			for i := 0; i < 6; i++ {
 				wg.Add(1)
