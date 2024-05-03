@@ -1,0 +1,29 @@
+beginning:
+BenchmarkSlow-10              57          21453817 ns/op        20468629 B/op     182866 allocs/op
+BenchmarkFast-10              56          21576768 ns/op        20483795 B/op     182869 allocs/op
+
+pipeline: 
+BenchmarkSlow-10              58          21227425 ns/op        20470748 B/op     182871 allocs/op
+BenchmarkFast-10              67          16208414 ns/op        16893133 B/op     183748 allocs/op
+
+strings:
+BenchmarkSlow-10              57          21376197 ns/op        20485071 B/op     182872 allocs/op
+BenchmarkFast-10             190           6279144 ns/op         2901175 B/op      47403 allocs/op
+
+bytes:
+BenchmarkSlow-10              55          21429261 ns/op        20488781 B/op     182870 allocs/op
+BenchmarkFast-10             194           5965424 ns/op         1512870 B/op      45738 allocs/op
+
+json.Decoder:
+BenchmarkSlow-10              56          21552506 ns/op        20489262 B/op     182871 allocs/op
+BenchmarkFast-10             195           6089043 ns/op          999243 B/op      39747 allocs/op
+
+structure:
+BenchmarkSlow-10              56          21296302 ns/op        20471704 B/op     182865 allocs/op
+BenchmarkFast-10             247           4800407 ns/op          472937 B/op       6749 allocs/op
+
+easyjson:
+BenchmarkSlow-10              54          21545272 ns/op        20480748 B/op      182876 allocs/op
+BenchmarkFast-10             895           1291341 ns/op          474436 B/op        6738 allocs/op
+
+BenchmarkSolution-8          500           2782432 ns/op          559910 B/op      10422 allocs/op
