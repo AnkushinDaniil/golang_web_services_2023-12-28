@@ -5,10 +5,19 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"log"
+	"net/http"
+	"net/url"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
+
+	"hw4/user"
+)
+
+type (
+	fastUser = user.User
+	Users    = user.Users
 )
 
 type Row struct {
@@ -20,32 +29,64 @@ type Row struct {
 	About     string `xml:"about"`
 }
 
-func main() {
-	query := "ab"
-	order_field := "Id"
-	order_by := -1
-	limit := 10
-	offset := 0
+func runServer(addr string) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", SearchServer)
+
+	server := http.Server{
+		Addr:    addr,
+		Handler: mux,
+	}
+
+	fmt.Println("starting server at", addr)
+	server.ListenAndServe()
+}
+
+func handleQuery(values url.Values) (string, string, int, int, int, error) {
+	query := values.Get("query")
+	order_field := values.Get("order_field")
+	order_by, err := strconv.Atoi(values.Get("order_by"))
+	if err != nil {
+		return "", "", 0, 0, 0, err
+	}
+	limit, err := strconv.Atoi(values.Get("limit"))
+	if err != nil {
+		return "", "", 0, 0, 0, err
+	}
+	offset, err := strconv.Atoi(values.Get("offset"))
+	if err != nil {
+		return "", "", 0, 0, 0, err
+	}
+	return query, order_field, order_by, limit, offset, err
+}
+
+func SearchServer(w http.ResponseWriter, r *http.Request) {
+	query, order_field, order_by, limit, offset, err := handleQuery(r.URL.Query())
+	if err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
 
 	file, err := os.Open("dataset.xml") // For read access.
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, err.Error(), 500)
+		return
 	}
 	defer file.Close()
 
 	input := bufio.NewReader(file)
 	decoder := xml.NewDecoder(input)
 
-	users := make([]User, 0, 64)
+	users := make(Users, 0, 64)
 	var row Row
 	i := 0
 
 	for {
-		t, tokenErr := decoder.Token()
-		if tokenErr != nil && tokenErr != io.EOF {
-			fmt.Println("error happend", tokenErr)
-			break
-		} else if tokenErr == io.EOF {
+		t, err := decoder.Token()
+		if err != nil && err != io.EOF {
+			http.Error(w, err.Error(), 500)
+			return
+		} else if err == io.EOF {
 			break
 		}
 		if t == nil {
@@ -62,11 +103,11 @@ func main() {
 				strings.Contains(strings.ToLower(row.LastName), strings.ToLower(query)) ||
 				strings.Contains(strings.ToLower(row.About), strings.ToLower(query)) {
 				i++
-				if i >= limit {
+				if i > limit {
 					break
 				}
 				if i > offset {
-					users = append(users, User{
+					users = append(users, fastUser{
 						Id:     row.ID,
 						Name:   row.FirstName + " " + row.LastName,
 						Age:    row.Age,
@@ -80,7 +121,7 @@ func main() {
 	}
 
 	if order_by != 0 {
-		slices.SortFunc(users, func(a, b User) int {
+		slices.SortFunc(users, func(a, b fastUser) int {
 			switch order_field {
 			case "Id":
 				if a.Id < b.Id {
@@ -104,7 +145,13 @@ func main() {
 		})
 	}
 
-	for i := 0; i < len(users); i++ {
-		fmt.Println(users[i])
+	data, err := users.MarshalJSON()
+	if err != nil {
+		http.Error(w, err.Error(), 500)
 	}
+	w.Write(data)
+}
+
+func main() {
+	runServer(":8080")
 }
