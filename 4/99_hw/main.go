@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,6 +15,8 @@ import (
 
 	"hw4/user"
 )
+
+const token = "123"
 
 type (
 	fastUser = user.User
@@ -45,6 +48,9 @@ func runServer(addr string) {
 func handleQuery(values url.Values) (string, string, int, int, int, error) {
 	query := values.Get("query")
 	order_field := values.Get("order_field")
+	if order_field != "Id" && order_field != "Age" && order_field != "Name" {
+		return "", "", 0, 0, 0, errors.New("bad_order_field")
+	}
 	order_by, err := strconv.Atoi(values.Get("order_by"))
 	if err != nil {
 		return "", "", 0, 0, 0, err
@@ -61,15 +67,20 @@ func handleQuery(values url.Values) (string, string, int, int, int, error) {
 }
 
 func SearchServer(w http.ResponseWriter, r *http.Request) {
-	query, order_field, order_by, limit, offset, err := handleQuery(r.URL.Query())
-	if err != nil {
-		http.Error(w, err.Error(), 400)
+	if r.Header.Get("AccessToken") != token {
+		http.Error(w, "bad_token", http.StatusUnauthorized)
 		return
 	}
 
-	file, err := os.Open("dataset.xml") // For read access.
+	query, order_field, order_by, limit, offset, err := handleQuery(r.URL.Query())
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	file, err := os.Open("dataset.xml")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer file.Close()
@@ -84,7 +95,7 @@ func SearchServer(w http.ResponseWriter, r *http.Request) {
 	for {
 		t, err := decoder.Token()
 		if err != nil && err != io.EOF {
-			http.Error(w, err.Error(), 500)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		} else if err == io.EOF {
 			break
@@ -147,7 +158,7 @@ func SearchServer(w http.ResponseWriter, r *http.Request) {
 
 	data, err := users.MarshalJSON()
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 	w.Write(data)
 }
