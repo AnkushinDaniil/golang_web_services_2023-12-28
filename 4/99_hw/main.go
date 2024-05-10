@@ -108,25 +108,25 @@ func SearchServer(w http.ResponseWriter, r *http.Request) {
 		case xml.StartElement:
 			if se.Name.Local == "row" {
 				decoder.DecodeElement(&row, &se)
-			}
 
-			if strings.Contains(strings.ToLower(row.FirstName), strings.ToLower(query)) ||
-				strings.Contains(strings.ToLower(row.LastName), strings.ToLower(query)) ||
-				strings.Contains(strings.ToLower(row.About), strings.ToLower(query)) {
-				i++
-				if i > limit {
-					break
-				}
-				if i > offset {
-					users = append(users, fastUser{
-						Id:     row.ID,
-						Name:   row.FirstName + " " + row.LastName,
-						Age:    row.Age,
-						About:  row.About,
-						Gender: row.Gender,
-					})
-				}
+				if strings.Contains(strings.ToLower(row.FirstName), strings.ToLower(query)) ||
+					strings.Contains(strings.ToLower(row.LastName), strings.ToLower(query)) ||
+					strings.Contains(strings.ToLower(row.About), strings.ToLower(query)) {
+					i++
+					if i > limit {
+						break
+					}
+					if i > offset {
+						users = append(users, fastUser{
+							Id:     row.ID,
+							Name:   row.FirstName + " " + row.LastName,
+							Age:    row.Age,
+							About:  row.About,
+							Gender: row.Gender,
+						})
+					}
 
+				}
 			}
 		}
 	}
