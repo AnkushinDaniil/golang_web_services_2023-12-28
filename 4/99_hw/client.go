@@ -59,7 +59,6 @@ type SearchClient struct {
 
 // FindUsers отправляет запрос во внешнюю систему, которая непосредственно ищет пользоваталей
 func (srv *SearchClient) FindUsers(req SearchRequest) (*SearchResponse, error) {
-
 	searcherParams := url.Values{}
 
 	if req.Limit < 0 {
@@ -72,7 +71,7 @@ func (srv *SearchClient) FindUsers(req SearchRequest) (*SearchResponse, error) {
 		return nil, fmt.Errorf("offset must be > 0")
 	}
 
-	//нужно для получения следующей записи, на основе которой мы скажем - можно показать переключатель следующей страницы или нет
+	// нужно для получения следующей записи, на основе которой мы скажем - можно показать переключатель следующей страницы или нет
 	req.Limit++
 
 	searcherParams.Add("limit", strconv.Itoa(req.Limit))
@@ -122,7 +121,7 @@ func (srv *SearchClient) FindUsers(req SearchRequest) (*SearchResponse, error) {
 		result.NextPage = true
 		result.Users = data[0 : len(data)-1]
 	} else {
-		result.Users = data[0:len(data)]
+		result.Users = data[0:]
 	}
 
 	return &result, err
