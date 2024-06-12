@@ -13,12 +13,9 @@ import (
 )
 
 func CheckoutDummy(w http.ResponseWriter, r *http.Request) {
-
 }
 
-var (
-	client = &http.Client{Timeout: time.Second}
-)
+var client = &http.Client{Timeout: time.Second}
 
 type Case struct {
 	Method string // GET по-умолчанию в http.NewRequest если передали пустую строку
@@ -41,7 +38,7 @@ func TestMyApi(t *testing.T) {
 	ts := httptest.NewServer(NewMyApi())
 
 	cases := []Case{
-		Case{ // успешный запрос
+		{ // 0 успешный запрос
 			Path:   ApiUserProfile,
 			Query:  "login=rvasily",
 			Status: http.StatusOK,
@@ -55,7 +52,7 @@ func TestMyApi(t *testing.T) {
 				},
 			},
 		},
-		Case{ // успешный запрос - POST
+		{ // 1 успешный запрос - POST
 			Path:   ApiUserProfile,
 			Method: http.MethodPost,
 			Query:  "login=rvasily",
@@ -70,15 +67,15 @@ func TestMyApi(t *testing.T) {
 				},
 			},
 		},
-		Case{ // сработала валидация - логин не должен быть пустым
+		{ // 2 сработала валидация - логин не должен быть пустым
 			Path:   ApiUserProfile,
 			Query:  "",
 			Status: http.StatusBadRequest,
 			Result: CR{
-				"error": "login must me not empty",
+				"error": "login must be not empty",
 			},
 		},
-		Case{ // получили ошибку общего назначения - ваш код сам подставил 500
+		{ // 3 получили ошибку общего назначения - ваш код сам подставил 500
 			Path:   ApiUserProfile,
 			Query:  "login=bad_user",
 			Status: http.StatusInternalServerError,
@@ -86,7 +83,7 @@ func TestMyApi(t *testing.T) {
 				"error": "bad user",
 			},
 		},
-		Case{ // получили специализированную ошибку - ваш код поставил статус 404 оттуда
+		{ // 4 получили специализированную ошибку - ваш код поставил статус 404 оттуда
 			Path:   ApiUserProfile,
 			Query:  "login=not_exist_user",
 			Status: http.StatusNotFound,
@@ -95,7 +92,7 @@ func TestMyApi(t *testing.T) {
 			},
 		},
 		// ------
-		Case{ // это должен ответить ваш ServeHTTP - если ему пришло что-то неизвестное (например когда он обрабатывает /user/)
+		{ // 5 это должен ответить ваш ServeHTTP - если ему пришло что-то неизвестное (например когда он обрабатывает /user/)
 			Path:   "/user/unknown",
 			Query:  "login=not_exist_user",
 			Status: http.StatusNotFound,
@@ -104,7 +101,7 @@ func TestMyApi(t *testing.T) {
 			},
 		},
 		// ------
-		Case{ // создаём юзера
+		{ // 6 создаём юзера
 			Path:   ApiUserCreate,
 			Method: http.MethodPost,
 			Query:  "login=mr.moderator&age=32&status=moderator&full_name=Ivan_Ivanov",
@@ -117,7 +114,7 @@ func TestMyApi(t *testing.T) {
 				},
 			},
 		},
-		Case{ // юзер действительно создался
+		{ // 7 юзер действительно создался
 			Path:   ApiUserProfile,
 			Query:  "login=mr.moderator",
 			Status: http.StatusOK,
@@ -132,7 +129,7 @@ func TestMyApi(t *testing.T) {
 			},
 		},
 
-		Case{ // только POST
+		{ // 8 только POST
 			Path:   ApiUserCreate,
 			Method: http.MethodGet,
 			Query:  "login=mr.moderator&age=32&status=moderator&full_name=GetMethod",
@@ -142,7 +139,7 @@ func TestMyApi(t *testing.T) {
 				"error": "bad method",
 			},
 		},
-		Case{
+		{ // 9
 			Path:   ApiUserCreate,
 			Method: http.MethodPost,
 			Query:  "any_params=123",
@@ -152,7 +149,7 @@ func TestMyApi(t *testing.T) {
 				"error": "unauthorized",
 			},
 		},
-		Case{
+		{ // 10
 			Path:   ApiUserCreate,
 			Method: http.MethodPost,
 			Query:  "login=mr.moderator&age=32&status=moderator&full_name=New_Ivan",
@@ -162,17 +159,17 @@ func TestMyApi(t *testing.T) {
 				"error": "user mr.moderator exist",
 			},
 		},
-		Case{
+		{ // 11
 			Path:   ApiUserCreate,
 			Method: http.MethodPost,
 			Query:  "&age=32&status=moderator&full_name=Ivan_Ivanov",
 			Status: http.StatusBadRequest,
 			Auth:   true,
 			Result: CR{
-				"error": "login must me not empty",
+				"error": "login must be not empty",
 			},
 		},
-		Case{
+		{ // 12
 			Path:   ApiUserCreate,
 			Method: http.MethodPost,
 			Query:  "login=new_m&age=32&status=moderator&full_name=Ivan_Ivanov",
@@ -182,7 +179,7 @@ func TestMyApi(t *testing.T) {
 				"error": "login len must be >= 10",
 			},
 		},
-		Case{
+		{ // 13
 			Path:   ApiUserCreate,
 			Method: http.MethodPost,
 			Query:  "login=new_moderator&age=ten&status=moderator&full_name=Ivan_Ivanov",
@@ -192,7 +189,7 @@ func TestMyApi(t *testing.T) {
 				"error": "age must be int",
 			},
 		},
-		Case{
+		{ // 14
 			Path:   ApiUserCreate,
 			Method: http.MethodPost,
 			Query:  "login=new_moderator&age=-1&status=moderator&full_name=Ivan_Ivanov",
@@ -202,7 +199,7 @@ func TestMyApi(t *testing.T) {
 				"error": "age must be >= 0",
 			},
 		},
-		Case{
+		{ // 15
 			Path:   ApiUserCreate,
 			Method: http.MethodPost,
 			Query:  "login=new_moderator&age=256&status=moderator&full_name=Ivan_Ivanov",
@@ -212,7 +209,7 @@ func TestMyApi(t *testing.T) {
 				"error": "age must be <= 128",
 			},
 		},
-		Case{
+		{
 			Path:   ApiUserCreate,
 			Method: http.MethodPost,
 			Query:  "login=new_moderator&age=32&status=adm&full_name=Ivan_Ivanov",
@@ -222,7 +219,7 @@ func TestMyApi(t *testing.T) {
 				"error": "status must be one of [user, moderator, admin]",
 			},
 		},
-		Case{ // status по-умолчанию
+		{ // status по-умолчанию
 			Path:   ApiUserCreate,
 			Method: http.MethodPost,
 			Query:  "login=new_moderator3&age=32&full_name=Ivan_Ivanov",
@@ -235,7 +232,7 @@ func TestMyApi(t *testing.T) {
 				},
 			},
 		},
-		Case{ // обрабатываем неизвестную ошибку
+		{ // обрабатываем неизвестную ошибку
 			Path:   ApiUserCreate,
 			Method: http.MethodPost,
 			Query:  "login=bad_username&age=32&full_name=Ivan_Ivanov",
@@ -254,7 +251,7 @@ func TestOtherApi(t *testing.T) {
 	ts := httptest.NewServer(NewOtherApi())
 
 	cases := []Case{
-		Case{
+		{
 			Path:   ApiUserCreate,
 			Method: http.MethodPost,
 			Query:  "username=I3apBap&level=1&class=barbarian&account_name=Vasily",
@@ -264,7 +261,7 @@ func TestOtherApi(t *testing.T) {
 				"error": "class must be one of [warrior, sorcerer, rouge]",
 			},
 		},
-		Case{
+		{
 			Path:   ApiUserCreate,
 			Method: http.MethodPost,
 			Query:  "username=I3apBap&level=1&class=warrior&account_name=Vasily",
