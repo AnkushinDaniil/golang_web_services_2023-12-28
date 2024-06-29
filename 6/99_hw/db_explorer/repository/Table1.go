@@ -1,6 +1,10 @@
 package repository
 
-import "database/sql"
+import (
+	"database/sql"
+
+	"db_explorer/entity"
+)
 
 type Table struct {
 	db *sql.DB
@@ -12,10 +16,8 @@ func NewTable(db *sql.DB) *Table {
 	}
 }
 
-func (t *Table) GetAll(table string) (map[string]interface{}, error) {
-	res := make(map[string]interface{}, 1)
-	response := make(map[string]interface{}, 1)
-	tables := make([]interface{}, 0, 2)
+func (t *Table) GetAll() ([]string, error) {
+	response := make([]string, 0, 1)
 	rows, err := t.db.Query("SHOW TABLES")
 	if err != nil {
 		return nil, err
@@ -26,10 +28,25 @@ func (t *Table) GetAll(table string) (map[string]interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		tables = append(tables, name)
+		response = append(response, name)
 	}
 	rows.Close()
-	res["tables"] = tables
-	response["response"] = res
+	return response, nil
+}
+
+func (t *Table) GetList(table string, limit, offset int) ([]entity.CR, error) {
+	rows, err := t.db.Query("SELECT * FROM ? LIMIT ? OFFSET ?", table, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	response := make([]entity.CR, 0, 2)
+	for rows.Next() {
+		var row entity.CR
+		err = rows.Scan(&row)
+		if err != nil {
+			return nil, err
+		}
+		response = append(response, row)
+	}
 	return response, nil
 }

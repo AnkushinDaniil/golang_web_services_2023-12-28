@@ -25,11 +25,6 @@ func NewHandler(itemSrv ItemService, tableSrv TableService) *Handler {
 	}
 }
 
-func (h *Handler) InitRoutes() {
-	var ctx TableContext
-	h.Table.GetAll(ctx)
-}
-
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := context.NewExplorerContext(w, r)
 	h.Handle(ctx)

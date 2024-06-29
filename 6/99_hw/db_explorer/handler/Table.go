@@ -1,17 +1,29 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
+
+	"db_explorer/context"
+	"db_explorer/entity"
+)
+
+const (
+	DEFAULT_LIMIT  = 5
+	DEFAULT_OFFSET = 7
 )
 
 type TableService interface {
-	GetAll(string) (map[string]interface{}, error)
+	GetAll() (entity.CR, error)
+	GetList(string, int, int) (entity.CR, error)
 }
 
 type TableContext interface {
 	GetTableName() (string, error)
-	SetResponse(int, map[string]interface{}, error)
+	SetResponse(int, entity.CR, error)
 	SendResponse()
+	Method() string
+	GetInt(string) (int, error)
 }
 
 type Table struct {
@@ -25,32 +37,47 @@ func NewTableHandler(srv TableService) *Table {
 }
 
 func (h *Table) Handle(ctx TableContext) {
-	defer ctx.SendResponse()
+	switch ctx.Method() {
+	case http.MethodGet:
+		h.handleGet(ctx)
+	}
+	ctx.SendResponse()
+}
+
+func (h *Table) handleGet(ctx TableContext) {
 	table, err := ctx.GetTableName()
+	var response entity.CR
 	if err != nil {
 		ctx.SetResponse(http.StatusBadRequest, nil, err)
 		return
 	}
 	if table == "" {
-		h.GetAll(ctx)
+		response, err = h.service.GetAll()
 	} else {
-		h.GetList(ctx)
+		limit, err := ctx.GetInt("limit")
+		if err != nil {
+			if errors.Is(err, context.EMPTY_PARAM_ERROR) {
+				limit = DEFAULT_LIMIT
+			} else {
+				ctx.SetResponse(http.StatusInternalServerError, nil, err)
+				return
+			}
+		}
+		offset, err := ctx.GetInt("offset")
+		if err != nil {
+			if errors.Is(err, context.EMPTY_PARAM_ERROR) {
+				offset = DEFAULT_OFFSET
+			} else {
+				ctx.SetResponse(http.StatusInternalServerError, nil, err)
+				return
+			}
+		}
+		response, err = h.service.GetList(table, limit, offset)
+		if err != nil {
+			ctx.SetResponse(http.StatusNotFound, nil, err)
+			return
+		}
 	}
-}
 
-func (h *Table) GetAll(ctx TableContext) {
-	table, err := ctx.GetTableName()
-	if err != nil {
-		ctx.SetResponse(http.StatusBadRequest, nil, err)
-		return
-	}
-	response, err := h.service.GetAll(table)
-	if err != nil {
-		ctx.SetResponse(http.StatusInternalServerError, nil, err)
-		return
-	}
-	ctx.SetResponse(http.StatusOK, response, err)
-}
-
-func (h *Table) GetList(ctx TableContext) {
+	ctx.SetResponse(http.StatusOK, entity.CR{"response": response}, nil)
 }

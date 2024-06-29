@@ -4,11 +4,16 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
+
+	"db_explorer/entity"
 )
 
+var EMPTY_PARAM_ERROR = errors.New("Parameter is empty")
+
 type Response struct {
-	data       map[string]interface{}
+	data       entity.CR
 	statusCode int
 	err        error
 }
@@ -35,7 +40,7 @@ func (ctx *ExplorerContext) GetTableName() (string, error) {
 	return ctx.path[1], nil
 }
 
-func (ctx *ExplorerContext) SetResponse(statusCode int, data map[string]interface{}, err error) {
+func (ctx *ExplorerContext) SetResponse(statusCode int, data entity.CR, err error) {
 	ctx.response = Response{
 		data:       data,
 		statusCode: statusCode,
@@ -44,8 +49,11 @@ func (ctx *ExplorerContext) SetResponse(statusCode int, data map[string]interfac
 }
 
 func (r *Response) Bytes() ([]byte, error) {
+	response := make(entity.CR, 2)
 	if r.err != nil {
-		r.data["error"] = r.err.Error()
+		response["error"] = r.err.Error()
+	} else {
+		response["response"] = r.data
 	}
 	return json.Marshal(r.data)
 }
@@ -62,4 +70,27 @@ func (ctx *ExplorerContext) SendResponse() {
 
 func (ctx *ExplorerContext) PathLen() int {
 	return len(ctx.path)
+}
+
+func (ctx *ExplorerContext) Method() string {
+	return ctx.r.Method
+}
+
+func (ctx *ExplorerContext) GetStr(param string) string {
+	var response string
+	if ctx.r.Method != http.MethodGet {
+		ctx.r.ParseForm()
+		response = ctx.r.Form.Get(param)
+	} else {
+		response = ctx.r.URL.Query().Get(param)
+	}
+	return response
+}
+
+func (ctx *ExplorerContext) GetInt(param string) (int, error) {
+	responseStr := ctx.GetStr(param)
+	if responseStr == "" {
+		return 0, EMPTY_PARAM_ERROR
+	}
+	return strconv.Atoi(responseStr)
 }
