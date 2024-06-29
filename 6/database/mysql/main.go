@@ -25,7 +25,6 @@ type Handler struct {
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-
 	items := []*Item{}
 
 	rows, err := h.DB.Query("SELECT id, title, updated FROM items")
@@ -145,7 +144,6 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-
 	// основные настройки к базе
 	dsn := "root@tcp(localhost:3306)/coursera?"
 	// указываем кодировку

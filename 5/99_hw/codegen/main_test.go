@@ -38,20 +38,20 @@ func TestMyApi(t *testing.T) {
 	ts := httptest.NewServer(NewMyApi())
 
 	cases := []Case{
-		// { // 0 успешный запрос
-		// 	Path:   ApiUserProfile,
-		// 	Query:  "login=rvasily",
-		// 	Status: http.StatusOK,
-		// 	Result: CR{
-		// 		"error": "",
-		// 		"response": CR{
-		// 			"id":        42,
-		// 			"login":     "rvasily",
-		// 			"full_name": "Vasily Romanov",
-		// 			"status":    20,
-		// 		},
-		// 	},
-		// },
+		{ // 0 успешный запрос
+			Path:   ApiUserProfile,
+			Query:  "login=rvasily",
+			Status: http.StatusOK,
+			Result: CR{
+				"error": "",
+				"response": CR{
+					"id":        42,
+					"login":     "rvasily",
+					"full_name": "Vasily Romanov",
+					"status":    20,
+				},
+			},
+		},
 		{ // 1 успешный запрос - POST
 			Path:   ApiUserProfile,
 			Method: http.MethodPost,

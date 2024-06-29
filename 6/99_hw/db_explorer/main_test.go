@@ -1,16 +1,15 @@
 package main
 
 import (
-	"database/sql"
-	"fmt"
-	"reflect"
-	"testing"
-
 	"bytes"
+	"database/sql"
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"testing"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -28,40 +27,39 @@ type Case struct {
 	Body   interface{}
 }
 
-var (
-	client = &http.Client{Timeout: time.Second}
-)
+var client = &http.Client{Timeout: time.Second}
 
 func PrepareTestApis(db *sql.DB) {
 	qs := []string{
 		`DROP TABLE IF EXISTS items;`,
 
 		`CREATE TABLE items (
-  id int(11) NOT NULL AUTO_INCREMENT,
-  title varchar(255) NOT NULL,
-  description text NOT NULL,
-  updated varchar(255) DEFAULT NULL,
-  PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;`,
+			id int(11) NOT NULL AUTO_INCREMENT,
+			title varchar(255) NOT NULL,
+			description text NOT NULL,
+			updated varchar(255) DEFAULT NULL,
+			PRIMARY KEY (id)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8;`,
 
-		`INSERT INTO items (id, title, description, updated) VALUES
-(1,	'database/sql',	'Рассказать про базы данных',	'rvasily'),
-(2,	'memcache',	'Рассказать про мемкеш с примером использования',	NULL);`,
+		`
+			INSERT INTO items (id, title, description, updated)
+			    VALUES (1, 'database/sql', 'Рассказать про базы данных', 'rvasily'), (2, 'memcache', 'Рассказать про мемкеш с примером использования', NULL)`,
 
 		`DROP TABLE IF EXISTS users;`,
 
 		`CREATE TABLE users (
 			user_id int(11) NOT NULL AUTO_INCREMENT,
-  login varchar(255) NOT NULL,
-  password varchar(255) NOT NULL,
-  email varchar(255) NOT NULL,
-  info text NOT NULL,
-  updated varchar(255) DEFAULT NULL,
-  PRIMARY KEY (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;`,
+			login varchar(255) NOT NULL,
+			password varchar(255) NOT NULL,
+			email varchar(255) NOT NULL,
+			info text NOT NULL,
+			updated varchar(255) DEFAULT NULL,
+			PRIMARY KEY (user_id)				
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8;`,
 
-		`INSERT INTO users (user_id, login, password, email, info, updated) VALUES
-(1,	'rvasily',	'love',	'rvasily@example.com',	'none',	NULL);`,
+		`
+			INSERT INTO users (user_id, login, PASSWORD, email, info, updated)
+			    VALUES (1, 'rvasily', 'love', 'rvasily@example.com', 'none', NULL)`,
 	}
 
 	for _, q := range qs {
@@ -105,7 +103,7 @@ func TestApis(t *testing.T) {
 	ts := httptest.NewServer(handler)
 
 	cases := []Case{
-		Case{
+		{
 			Path: "/", // список таблиц
 			Result: CR{
 				"response": CR{
@@ -113,25 +111,25 @@ func TestApis(t *testing.T) {
 				},
 			},
 		},
-		Case{
+		{
 			Path:   "/unknown_table",
 			Status: http.StatusNotFound,
 			Result: CR{
 				"error": "unknown table",
 			},
 		},
-		Case{
+		{
 			Path: "/items",
 			Result: CR{
 				"response": CR{
 					"records": []CR{
-						CR{
+						{
 							"id":          1,
 							"title":       "database/sql",
 							"description": "Рассказать про базы данных",
 							"updated":     "rvasily",
 						},
-						CR{
+						{
 							"id":          2,
 							"title":       "memcache",
 							"description": "Рассказать про мемкеш с примером использования",
@@ -141,13 +139,13 @@ func TestApis(t *testing.T) {
 				},
 			},
 		},
-		Case{
+		{
 			Path:  "/items",
 			Query: "limit=1",
 			Result: CR{
 				"response": CR{
 					"records": []CR{
-						CR{
+						{
 							"id":          1,
 							"title":       "database/sql",
 							"description": "Рассказать про базы данных",
@@ -157,13 +155,13 @@ func TestApis(t *testing.T) {
 				},
 			},
 		},
-		Case{
+		{
 			Path:  "/items",
 			Query: "limit=1&offset=1",
 			Result: CR{
 				"response": CR{
 					"records": []CR{
-						CR{
+						{
 							"id":          2,
 							"title":       "memcache",
 							"description": "Рассказать про мемкеш с примером использования",
@@ -173,7 +171,7 @@ func TestApis(t *testing.T) {
 				},
 			},
 		},
-		Case{
+		{
 			Path: "/items/1",
 			Result: CR{
 				"response": CR{
@@ -186,7 +184,7 @@ func TestApis(t *testing.T) {
 				},
 			},
 		},
-		Case{
+		{
 			Path:   "/items/100500",
 			Status: http.StatusNotFound,
 			Result: CR{
@@ -195,7 +193,7 @@ func TestApis(t *testing.T) {
 		},
 
 		// тут идёт создание и редактирование
-		Case{
+		{
 			Path:   "/items/",
 			Method: http.MethodPut,
 			Body: CR{
@@ -212,7 +210,7 @@ func TestApis(t *testing.T) {
 		// это пример хрупкого теста
 		// если много раз вызывать один и тот же тест - записи будут добавляться
 		// поэтому придётся сделать сброс базы каждый раз в PrepareTestData
-		Case{
+		{
 			Path: "/items/3",
 			Result: CR{
 				"response": CR{
@@ -225,7 +223,7 @@ func TestApis(t *testing.T) {
 				},
 			},
 		},
-		Case{
+		{
 			Path:   "/items/3",
 			Method: http.MethodPost,
 			Body: CR{
@@ -237,7 +235,7 @@ func TestApis(t *testing.T) {
 				},
 			},
 		},
-		Case{
+		{
 			Path: "/items/3",
 			Result: CR{
 				"response": CR{
@@ -252,7 +250,7 @@ func TestApis(t *testing.T) {
 		},
 
 		// обновление null-поля в таблице
-		Case{
+		{
 			Path:   "/items/3",
 			Method: http.MethodPost,
 			Body: CR{
@@ -264,7 +262,7 @@ func TestApis(t *testing.T) {
 				},
 			},
 		},
-		Case{
+		{
 			Path: "/items/3",
 			Result: CR{
 				"response": CR{
@@ -279,7 +277,7 @@ func TestApis(t *testing.T) {
 		},
 
 		// обновление null-поля в таблице
-		Case{
+		{
 			Path:   "/items/3",
 			Method: http.MethodPost,
 			Body: CR{
@@ -291,7 +289,7 @@ func TestApis(t *testing.T) {
 				},
 			},
 		},
-		Case{
+		{
 			Path: "/items/3",
 			Result: CR{
 				"response": CR{
@@ -306,7 +304,7 @@ func TestApis(t *testing.T) {
 		},
 
 		// ошибки
-		Case{
+		{
 			Path:   "/items/3",
 			Method: http.MethodPost,
 			Status: http.StatusBadRequest,
@@ -317,7 +315,7 @@ func TestApis(t *testing.T) {
 				"error": "field id have invalid type",
 			},
 		},
-		Case{
+		{
 			Path:   "/items/3",
 			Method: http.MethodPost,
 			Status: http.StatusBadRequest,
@@ -328,7 +326,7 @@ func TestApis(t *testing.T) {
 				"error": "field title have invalid type",
 			},
 		},
-		Case{
+		{
 			Path:   "/items/3",
 			Method: http.MethodPost,
 			Status: http.StatusBadRequest,
@@ -340,7 +338,7 @@ func TestApis(t *testing.T) {
 			},
 		},
 
-		Case{
+		{
 			Path:   "/items/3",
 			Method: http.MethodPost,
 			Status: http.StatusBadRequest,
@@ -353,7 +351,7 @@ func TestApis(t *testing.T) {
 		},
 
 		// удаление
-		Case{
+		{
 			Path:   "/items/3",
 			Method: http.MethodDelete,
 			Result: CR{
@@ -362,7 +360,7 @@ func TestApis(t *testing.T) {
 				},
 			},
 		},
-		Case{
+		{
 			Path:   "/items/3",
 			Method: http.MethodDelete,
 			Result: CR{
@@ -371,7 +369,7 @@ func TestApis(t *testing.T) {
 				},
 			},
 		},
-		Case{
+		{
 			Path:   "/items/3",
 			Status: http.StatusNotFound,
 			Result: CR{
@@ -380,7 +378,7 @@ func TestApis(t *testing.T) {
 		},
 
 		// и немного по другой таблице
-		Case{
+		{
 			Path: "/users/1",
 			Result: CR{
 				"response": CR{
@@ -396,7 +394,7 @@ func TestApis(t *testing.T) {
 			},
 		},
 
-		Case{
+		{
 			Path:   "/users/1",
 			Method: http.MethodPost,
 			Body: CR{
@@ -409,7 +407,7 @@ func TestApis(t *testing.T) {
 				},
 			},
 		},
-		Case{
+		{
 			Path: "/users/1",
 			Result: CR{
 				"response": CR{
@@ -425,7 +423,7 @@ func TestApis(t *testing.T) {
 			},
 		},
 		// ошибки
-		Case{
+		{
 			Path:   "/users/1",
 			Method: http.MethodPost,
 			Status: http.StatusBadRequest,
@@ -437,7 +435,7 @@ func TestApis(t *testing.T) {
 			},
 		},
 		// не забываем про sql-инъекции
-		Case{
+		{
 			Path:   "/users/",
 			Method: http.MethodPut,
 			Body: CR{
@@ -452,7 +450,7 @@ func TestApis(t *testing.T) {
 				},
 			},
 		},
-		Case{
+		{
 			Path: "/users/2",
 			Result: CR{
 				"response": CR{
@@ -469,13 +467,13 @@ func TestApis(t *testing.T) {
 		},
 		// тут тоже возможна sql-инъекция
 		// если пришло не число на вход - берём дефолтное значене для лимита-оффсета
-		Case{
+		{
 			Path:  "/users",
 			Query: "limit=1'&offset=1\"",
 			Result: CR{
 				"response": CR{
 					"records": []CR{
-						CR{
+						{
 							"user_id":  1,
 							"login":    "rvasily",
 							"password": "love",
@@ -483,7 +481,7 @@ func TestApis(t *testing.T) {
 							"info":     "try update",
 							"updated":  "now",
 						},
-						CR{
+						{
 							"user_id":  2,
 							"login":    "qwerty'",
 							"password": "love\"",
@@ -514,7 +512,11 @@ func runCases(t *testing.T, ts *httptest.Server, db *sql.DB, cases []Case) {
 		// если у вас случилась это ошибка - значит вы не делаете где-то rows.Close и у вас текут соединения с базой
 		// если такое случилось на первом тесте - значит вы не закрываете коннект где-то при иницаилизации в NewDbExplorer
 		if db.Stats().OpenConnections != 1 {
-			t.Fatalf("[%s] you have %d open connections, must be 1", caseName, db.Stats().OpenConnections)
+			t.Fatalf(
+				"[%s] you have %d open connections, must be 1",
+				caseName,
+				db.Stats().OpenConnections,
+			)
 		}
 
 		if item.Method == "" || item.Method == http.MethodGet {
@@ -535,7 +537,7 @@ func runCases(t *testing.T, ts *httptest.Server, db *sql.DB, cases []Case) {
 			continue
 		}
 		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 
 		// fmt.Printf("[%s] body: %s\n", caseName, string(body))
 		if item.Status == 0 {
@@ -565,5 +567,4 @@ func runCases(t *testing.T, ts *httptest.Server, db *sql.DB, cases []Case) {
 			continue
 		}
 	}
-
 }
