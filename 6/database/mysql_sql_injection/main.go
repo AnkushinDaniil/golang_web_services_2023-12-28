@@ -8,9 +8,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-var (
-	db *sql.DB
-)
+var db *sql.DB
 
 var loginFormTmpl = `
 <html>
@@ -25,7 +23,6 @@ var loginFormTmpl = `
 `
 
 func main() {
-
 	// основные настройки к базе
 	dsn := "root@tcp(localhost:3306)/coursera?"
 	// указываем кодировку
@@ -75,7 +72,15 @@ func main() {
 
 		// ПРАВИЛЬНО
 		// Мы используем плейсхолдеры, там параметры будет экранирован должным образом
-		row = db.QueryRow("SELECT id, login FROM users WHERE login = ? LIMIT 1", inputLogin)
+		row = db.QueryRow(`
+			SELECT
+			    id,
+			    login
+			FROM
+			    users
+			WHERE
+			    login = ?
+			LIMIT 1`, inputLogin)
 		err = row.Scan(&id, &login)
 		if err == sql.ErrNoRows {
 			body += fmt.Sprintln("Placeholders case: NOT FOUND")
@@ -91,7 +96,7 @@ func main() {
 	http.ListenAndServe(":8080", nil)
 }
 
-//PanicOnErr panics on error
+// PanicOnErr panics on error
 func PanicOnErr(err error) {
 	if err != nil {
 		panic(err)

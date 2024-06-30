@@ -13,7 +13,10 @@ import (
 // обращаю ваше внимание - в этом задании запрещены глобальные переменные
 
 func NewDbExplorer(db *sql.DB) (http.Handler, error) {
-	repo := repository.NewRepository(db)
+	repo, err := repository.NewRepository(db)
+	if err != nil {
+		return nil, err
+	}
 	services := service.NewService(repo.Item, repo.Table)
 	handlers := handler.NewHandler(services.Item, services.Table)
 	return handlers, nil

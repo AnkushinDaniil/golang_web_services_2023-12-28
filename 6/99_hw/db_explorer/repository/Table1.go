@@ -2,23 +2,43 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 
 	"db_explorer/entity"
 )
 
 type Table struct {
-	db *sql.DB
+	db     *sql.DB
+	tables map[string]entity.Table
 }
 
-func NewTable(db *sql.DB) *Table {
-	return &Table{
-		db: db,
+func NewTable(db *sql.DB) (*Table, error) {
+	t := Table{
+		db:     db,
+		tables: make(map[string]entity.Table, 2),
 	}
+	tablesArr, err := t.GetAll()
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < len(tablesArr); i++ {
+		fields, err := t.GetFields(tablesArr[i])
+		if err != nil {
+			return nil, err
+		}
+		t.tables[tablesArr[i]] = fields
+	}
+	return &t, nil
+}
+
+func (t *Table) CheckTable(table string) bool {
+	_, ok := t.tables[table]
+	return ok
 }
 
 func (t *Table) GetAll() ([]string, error) {
 	response := make([]string, 0, 1)
-	rows, err := t.db.Query("SHOW TABLES")
+	rows, err := t.db.Query(`SHOW TABLES`)
 	if err != nil {
 		return nil, err
 	}
@@ -34,19 +54,74 @@ func (t *Table) GetAll() ([]string, error) {
 	return response, nil
 }
 
-func (t *Table) GetList(table string, limit, offset int) ([]entity.CR, error) {
-	rows, err := t.db.Query("SELECT * FROM ? LIMIT ? OFFSET ?", table, limit, offset)
+func (t *Table) GetFields(table string) ([]entity.Field, error) {
+	rows, err := t.db.Query(fmt.Sprintf(`SHOW FULL COLUMNS FROM %s`, table))
 	if err != nil {
 		return nil, err
 	}
-	response := make([]entity.CR, 0, 2)
+	fields := make([]entity.Field, 0, 4)
 	for rows.Next() {
-		var row entity.CR
-		err = rows.Scan(&row)
+		var field entity.Field
+		err = rows.Scan(
+			&field.FieldName,
+			&field.FieldType,
+			&field.Collation,
+			&field.Null,
+			&field.Key,
+			&field.Default,
+			&field.Extra,
+			&field.Privileges,
+			&field.Comment,
+		)
 		if err != nil {
 			return nil, err
 		}
-		response = append(response, row)
+		fields = append(fields, field)
+	}
+	rows.Close()
+	return fields, nil
+}
+
+func (t *Table) GetList(table string, limit, offset int) ([]entity.CR, error) {
+	rows, err := t.db.Query(fmt.Sprintf(`
+		SELECT
+		    *
+		FROM
+		    %s
+		LIMIT ? OFFSET ?`, table),
+		limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	cols, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+	response := make([]entity.CR, 0, limit)
+	for rows.Next() {
+		columns := make([]interface{}, len(cols))
+		columnPointers := make([]interface{}, len(cols))
+		for i := 0; i < len(columns); i++ {
+			columnPointers[i] = &columns[i]
+		}
+		if err := rows.Scan(columnPointers...); err != nil {
+			return nil, err
+		}
+
+		m := make(entity.CR, len(cols))
+		for i := 0; i < len(cols); i++ {
+			switch val := (*(columnPointers[i].(*interface{}))).(type) {
+			case int:
+				m[cols[i]] = val
+			case string:
+				m[cols[i]] = val
+			case []uint8:
+				m[cols[i]] = string(val)
+			default:
+				m[cols[i]] = val
+			}
+		}
+		response = append(response, m)
 	}
 	return response, nil
 }

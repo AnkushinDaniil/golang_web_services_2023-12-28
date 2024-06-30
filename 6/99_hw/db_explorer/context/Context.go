@@ -1,13 +1,13 @@
 package context
 
 import (
+	"db_explorer/entity"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
-
-	"db_explorer/entity"
 )
 
 var EMPTY_PARAM_ERROR = errors.New("Parameter is empty")
@@ -26,6 +26,7 @@ type ExplorerContext struct {
 }
 
 func NewExplorerContext(w http.ResponseWriter, r *http.Request) *ExplorerContext {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	return &ExplorerContext{
 		path: strings.Split(r.URL.Path, "/"),
 		w:    w,
@@ -49,13 +50,13 @@ func (ctx *ExplorerContext) SetResponse(statusCode int, data entity.CR, err erro
 }
 
 func (r *Response) Bytes() ([]byte, error) {
-	response := make(entity.CR, 2)
+	response := make(entity.CR, 1)
 	if r.err != nil {
 		response["error"] = r.err.Error()
 	} else {
 		response["response"] = r.data
 	}
-	return json.Marshal(r.data)
+	return json.Marshal(response)
 }
 
 func (ctx *ExplorerContext) SendResponse() {
@@ -65,7 +66,8 @@ func (ctx *ExplorerContext) SendResponse() {
 		ctx.w.Write([]byte(`{"error": "` + err.Error() + `"}`))
 	}
 	ctx.w.WriteHeader(ctx.response.statusCode)
-	ctx.w.Write([]byte(data))
+	ctx.w.Write(data)
+	fmt.Println(string(data))
 }
 
 func (ctx *ExplorerContext) PathLen() int {

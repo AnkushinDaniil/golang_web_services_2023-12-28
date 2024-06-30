@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"slices"
 
 	"db_explorer/entity"
 )
@@ -12,6 +11,7 @@ var UNKNOWN_TABLE_ERROR = errors.New("unknown table")
 type TableRepository interface {
 	GetAll() ([]string, error)
 	GetList(string, int, int) ([]entity.CR, error)
+	CheckTable(string) bool
 }
 
 type Table struct {
@@ -29,11 +29,7 @@ func (t *Table) GetAll() (entity.CR, error) {
 }
 
 func (t *Table) GetList(table string, limit, offset int) (entity.CR, error) {
-	tables, err := t.repo.GetAll()
-	if err != nil {
-		return nil, err
-	}
-	if !slices.Contains(tables, table) {
+	if !t.repo.CheckTable(table) {
 		return nil, UNKNOWN_TABLE_ERROR
 	}
 	records, err := t.repo.GetList(table, limit, offset)

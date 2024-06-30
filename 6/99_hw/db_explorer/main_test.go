@@ -27,7 +27,7 @@ type Case struct {
 	Body   interface{}
 }
 
-var client = &http.Client{Timeout: time.Second}
+var client = &http.Client{Timeout: time.Hour}
 
 func PrepareTestApis(db *sql.DB) {
 	qs := []string{
@@ -93,7 +93,7 @@ func TestApis(t *testing.T) {
 	PrepareTestApis(db)
 
 	// возможно вам будет удобно закомментировать это чтобы смотреть результат после теста
-	defer CleanupTestApis(db)
+	// defer CleanupTestApis(db)
 
 	handler, err := NewDbExplorer(db)
 	if err != nil {

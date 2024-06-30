@@ -7,9 +7,13 @@ type Repository struct {
 	*Table
 }
 
-func NewRepository(db *sql.DB) *Repository {
+func NewRepository(db *sql.DB) (*Repository, error) {
+	table, err := NewTable(db)
+	if err != nil {
+		return nil, err
+	}
 	return &Repository{
 		Item:  NewItem(db),
-		Table: NewTable(db),
-	}
+		Table: table,
+	}, nil
 }

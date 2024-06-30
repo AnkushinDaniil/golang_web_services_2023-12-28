@@ -10,7 +10,7 @@ import (
 
 const (
 	DEFAULT_LIMIT  = 5
-	DEFAULT_OFFSET = 7
+	DEFAULT_OFFSET = 0
 )
 
 type TableService interface {
@@ -79,5 +79,5 @@ func (h *Table) handleGet(ctx TableContext) {
 		}
 	}
 
-	ctx.SetResponse(http.StatusOK, entity.CR{"response": response}, nil)
+	ctx.SetResponse(http.StatusOK, response, nil)
 }
