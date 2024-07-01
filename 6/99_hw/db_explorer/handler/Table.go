@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	"db_explorer/context"
 	"db_explorer/entity"
+	ec "db_explorer/explorerContext"
 )
 
 const (
@@ -56,7 +56,7 @@ func (h *Table) handleGet(ctx TableContext) {
 	} else {
 		limit, err := ctx.GetInt("limit")
 		if err != nil {
-			if errors.Is(err, context.EMPTY_PARAM_ERROR) {
+			if errors.Is(err, ec.EMPTY_PARAM_ERROR) {
 				limit = DEFAULT_LIMIT
 			} else {
 				ctx.SetResponse(http.StatusInternalServerError, nil, err)
@@ -65,7 +65,7 @@ func (h *Table) handleGet(ctx TableContext) {
 		}
 		offset, err := ctx.GetInt("offset")
 		if err != nil {
-			if errors.Is(err, context.EMPTY_PARAM_ERROR) {
+			if errors.Is(err, ec.EMPTY_PARAM_ERROR) {
 				offset = DEFAULT_OFFSET
 			} else {
 				ctx.SetResponse(http.StatusInternalServerError, nil, err)

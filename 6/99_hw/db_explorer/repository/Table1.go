@@ -8,14 +8,16 @@ import (
 )
 
 type Table struct {
-	db     *sql.DB
-	tables map[string]entity.Table
+	db      *sql.DB
+	tables  map[string]entity.Table
+	getFunc func(Scanner, []string) (entity.CR, error)
 }
 
-func NewTable(db *sql.DB) (*Table, error) {
+func NewTable(db *sql.DB, getFunc func(Scanner, []string) (entity.CR, error)) (*Table, error) {
 	t := Table{
-		db:     db,
-		tables: make(map[string]entity.Table, 2),
+		db:      db,
+		tables:  make(map[string]entity.Table, 2),
+		getFunc: getFunc,
 	}
 	tablesArr, err := t.GetAll()
 	if err != nil {
@@ -54,12 +56,12 @@ func (t *Table) GetAll() ([]string, error) {
 	return response, nil
 }
 
-func (t *Table) GetFields(table string) ([]entity.Field, error) {
+func (t *Table) GetFields(table string) (entity.Table, error) {
 	rows, err := t.db.Query(fmt.Sprintf(`SHOW FULL COLUMNS FROM %s`, table))
 	if err != nil {
 		return nil, err
 	}
-	fields := make([]entity.Field, 0, 4)
+	fields := make(entity.Table, 0, 4)
 	for rows.Next() {
 		var field entity.Field
 		err = rows.Scan(
@@ -99,27 +101,9 @@ func (t *Table) GetList(table string, limit, offset int) ([]entity.CR, error) {
 	}
 	response := make([]entity.CR, 0, limit)
 	for rows.Next() {
-		columns := make([]interface{}, len(cols))
-		columnPointers := make([]interface{}, len(cols))
-		for i := 0; i < len(columns); i++ {
-			columnPointers[i] = &columns[i]
-		}
-		if err := rows.Scan(columnPointers...); err != nil {
+		m, err := t.getFunc(rows, cols)
+		if err != nil {
 			return nil, err
-		}
-
-		m := make(entity.CR, len(cols))
-		for i := 0; i < len(cols); i++ {
-			switch val := (*(columnPointers[i].(*interface{}))).(type) {
-			case int:
-				m[cols[i]] = val
-			case string:
-				m[cols[i]] = val
-			case []uint8:
-				m[cols[i]] = string(val)
-			default:
-				m[cols[i]] = val
-			}
 		}
 		response = append(response, m)
 	}

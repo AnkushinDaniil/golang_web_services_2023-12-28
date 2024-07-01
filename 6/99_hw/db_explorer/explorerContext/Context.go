@@ -1,13 +1,14 @@
-package context
+package explorerContext
 
 import (
-	"db_explorer/entity"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"db_explorer/entity"
 )
 
 var EMPTY_PARAM_ERROR = errors.New("Parameter is empty")
@@ -60,6 +61,7 @@ func (r *Response) Bytes() ([]byte, error) {
 }
 
 func (ctx *ExplorerContext) SendResponse() {
+	fmt.Printf("Request: %#v\nBody: %#v\n", ctx.r.URL, ctx.r.Body)
 	data, err := ctx.response.Bytes()
 	if err != nil {
 		ctx.w.WriteHeader(http.StatusInternalServerError)
@@ -67,7 +69,7 @@ func (ctx *ExplorerContext) SendResponse() {
 	}
 	ctx.w.WriteHeader(ctx.response.statusCode)
 	ctx.w.Write(data)
-	fmt.Println(string(data))
+	fmt.Printf("Response: %#v\n\n", string(data))
 }
 
 func (ctx *ExplorerContext) PathLen() int {
@@ -95,4 +97,9 @@ func (ctx *ExplorerContext) GetInt(param string) (int, error) {
 		return 0, EMPTY_PARAM_ERROR
 	}
 	return strconv.Atoi(responseStr)
+}
+
+func (ctx *ExplorerContext) GetItemId() (int, error) {
+	idStr := ctx.path[2]
+	return strconv.Atoi(idStr)
 }

@@ -1,17 +1,14 @@
 package service
 
 import (
-	"errors"
-
 	"db_explorer/entity"
 )
-
-var UNKNOWN_TABLE_ERROR = errors.New("unknown table")
 
 type TableRepository interface {
 	GetAll() ([]string, error)
 	GetList(string, int, int) ([]entity.CR, error)
 	CheckTable(string) bool
+	GetFields(string) (entity.Table, error)
 }
 
 type Table struct {
